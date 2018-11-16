@@ -1,25 +1,37 @@
+open List
+
 type ident = string
-type typ = Tint | Tbool | Tstring | Tfloat | Tcomplex
+type typ = Tint | Tbool | Tstring | Tfloat | Tcomplex | Tdictionary
+(* Dictionaries https://www.w3schools.com/python/python_dictionaries.asp *)
+type value = IntV of int | BoolV of bool
+type dict = Dict of (ident * value) list
 
 type exp = Int of int | Add of exp * exp | Sub of exp * exp | Div of exp * exp
          | Bool of bool | And of exp * exp | Or of exp * exp
          | Eq of exp * exp | If of exp * exp * exp
-
+         (*start of Dictionaries methods*)
+         | Get of dict * ident
 
 type cmd = Assign of ident * exp | Seq of cmd * cmd | Skip
           | IfC of exp * cmd * cmd | While of exp * cmd
           (* | Throw | Try of cmd * cmd *)
 
-
-(*Bool2Int*)
-(*Int2Bool*)
-type value = IntV of int | BoolV of bool
 type exp_res = Val of value | Exc
 
 type state = ident -> value option
 let empty_state = fun x -> None
 let update s x v = fun y -> if y = x then Some v else None
 
+let rec dictionary_index_aux (l: (ident * value) list) (key:ident) (n:int) =
+      match l with
+      | [] -> None
+      | (k, v):: rest ->
+        if k = key then Some v else dictionary_index_aux rest key (n -1)
+
+let dictionary_index (list_val_key: (ident * value) list) (key:ident)=
+    dictionary_index_aux list_val_key key (length (list_val_key) - 1)
+
+(*Here we define some functions in order to allow operations between int and booleans*)
 let to_int (v: value) : int =
     match v with
         | IntV i -> i
@@ -29,6 +41,7 @@ let to_bool (v: value) : bool =
     match v with
         | BoolV b -> b
         | IntV i -> if i = 0 then false else true
+
 
 
 let rec eval_exp (e : exp) (s : state) : exp_res option =
@@ -71,7 +84,15 @@ let rec eval_exp (e : exp) (s : state) : exp_res option =
                             | Some Exc -> Some Exc
                             | _ -> None)
 
+        | Get (dict, key) -> (match dict with
+          | Dict(list_val_key) ->
+              (match dictionary_index list_val_key key with
+                | Some  (IntV i) -> Some (Val (IntV i))
+                | Some (BoolV b) -> Some (Val (BoolV b))
+                | None -> None)
+          | _ -> None)
 
+(*
 let rec step_cmd (c : cmd) (s : state) : (cmd * state) option =
     match c with
         | Assign (x, e) -> (match eval_exp e s with
@@ -96,3 +117,4 @@ let rec step_cmd (c : cmd) (s : state) : (cmd * state) option =
                              | Some Exc -> Some (Throw, s)  (* added *)
                              | _ -> None)
         | While (e, c) -> Some (IfC (e, Seq (c, While (e, c)), Skip), s)
+*)
